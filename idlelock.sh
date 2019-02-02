@@ -6,7 +6,7 @@
 #
 
 
-__version=0.1
+__version=0.2
 declare -A timers commands inhibitors restores
 
 
@@ -89,7 +89,14 @@ idle_monitor() {
 	#
 	# Monitor session idle time using an external process.
 	#
-	xidleseconds ${!timers[@]} | while read -r line; do
+	local args=
+	for timer in ${!timers[@]}; do
+		[[ " ${repeating_timers[@]} " =~ " ${timers[$timer]} " ]] \
+			&& args+="-r $timer " \
+			|| args+="-s $timer "
+	done
+
+	xidleseconds $args | while read -r line; do
 		[[ $line ]] || continue
 
 		timer=${timers[$line]}
@@ -97,13 +104,11 @@ idle_monitor() {
 
 		# on restore, run restore for the last ran timer
 		if [[ $timer = 'restore' ]]; then
-			[[ $skip_restore ]] && unset skip_restore && continue
 			run_restore $last_timer
 
 		# do not check inhibition when restoring
 		else
-			# when inhibited, skip the next restore and reset the timer
-			is_inhibited $timer && skip_restore=1 && xset s reset && continue
+			is_inhibited $timer && continue
 		fi
 
 		run_command $timer
@@ -190,6 +195,7 @@ usage() {
 	echo '    +command {cmd}  : command to run after {seconds} of inactivity'
 	echo '    +restore {cmd}  : command to run on activity after timer is activated'
 	echo '    +inhibit {val}  : inhibitors to check against before running command'
+	echo '    +repeat         : run every {seconds} after inactivity'
 	echo
 	echo 'each timer may different options. options are prefixed with a plus and'
 	echo 'only apply to the current timer. multiple options can be combined in'
@@ -284,13 +290,14 @@ while :; do
 					+c | +command) commands[$name]+="$2;" ;;
 					+r | +restore) restores[$name]+="$2;" ;;
 					+i | +inhibit) inhibitors[$name]+="$2;" ;;
+					+repeat) repeating_timers+=($name) && shift 1 ;;
 				esac
 
-				if [[ ${3:0:1} = '-' ]] || [[ -z $3 ]]; then
+				shift 1
+				if [[ -z $2 ]] || [[ ${2:0:1} = '-' ]]; then
 					break
 				fi
-
-				shift 2
+				shift 1
 			done
 			;;
 	esac
