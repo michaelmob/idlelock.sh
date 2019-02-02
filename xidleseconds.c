@@ -99,6 +99,8 @@ void append_long(int *len, unsigned long *values, unsigned long value) {
 	/*
 	 * Dynamically append unsigned long value to array.
 	 */
+	if (value == 0)
+		return;
 	int *temp = realloc(values, ++*len * sizeof(unsigned long));
 	if (!temp) {
 		fprintf(stderr, "Could not allocate memory.\n");
