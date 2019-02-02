@@ -12,7 +12,7 @@ sudo apt install libx11 libxss
 sudo pacman -S libx11 libxss
 
 # Clone and install
-git clone https://github.com/thetarkus/idlelock.sh && make && sudo make install
+git clone https://github.com/thetarkus/idlelock.sh && cd idlelock.sh && make && sudo make install
 ```
 After installation, minimal configuration is required.
 
