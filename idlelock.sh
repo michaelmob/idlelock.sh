@@ -33,6 +33,7 @@ is_network_busy() {
 	# $1 = ignored
 	# $2 = network card name (ip link)
 	# $3 = kbps to inhibit at
+	#
 	local IFS=' '
 	args=($@)
 	net_stats_path="/sys/class/net/${args[1]}/statistics"
@@ -72,7 +73,7 @@ is_inhibited() {
 			fullscreen) is_window_fullscreen && return 0 ;;
 
 			# network inhibitor
-			network*) is_network_busy $value && echo network byusy && return 0 ;;
+			network*) is_network_busy $value && return 0 ;;
 
 			# external inhibitor
 			*) [[ $value ]] && sh -c "$value" && return 0 ;;
