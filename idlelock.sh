@@ -6,7 +6,7 @@
 #
 
 
-__version=0.2
+__version=0.2.1
 declare -A timers commands inhibitors restores
 
 
@@ -27,6 +27,25 @@ is_window_fullscreen() {
 }
 
 
+is_network_busy() {
+	#
+	# Test if network is busy.
+	# $1 = ignored
+	# $2 = network card name (ip link)
+	# $3 = kbps to inhibit at
+	#
+	local IFS=' '
+	args=($@)
+	net_stats_path="/sys/class/net/${args[1]}/statistics"
+	tx_file="$net_stats_path/tx_bytes"
+	rx_file="$net_stats_path/rx_bytes"
+	prev_tx=$(<$tx_file)
+	prev_rx=$(<$rx_file)
+	sleep 1
+	(( ($(<$tx_file) - prev_tx + $(<$rx_file) - prev_rx) / 1000 > ${args[2]} ))
+}
+
+
 is_inhibited() {
 	#
 	# Test for successful inhibitors. 
@@ -44,7 +63,7 @@ is_inhibited() {
 		temp_inhibitors+=";${inhibitors[$1]}"
 
 	# loop through inhibitors, return 
-	IFS=';'
+	local IFS=';'
 	for value in $temp_inhibitors; do
 		case $value in
 			# audio inhibitor
@@ -52,6 +71,9 @@ is_inhibited() {
 
 			# fullscreen inhibitor
 			fullscreen) is_window_fullscreen && return 0 ;;
+
+			# network inhibitor
+			network*) is_network_busy $value && return 0 ;;
 
 			# external inhibitor
 			*) [[ $value ]] && sh -c "$value" && return 0 ;;
@@ -215,8 +237,9 @@ usage() {
 	echo "will check for audio playing and then always be inhibited because of 'exit 0'"
 	echo
 	echo 'list of built-in inhibitors:'
-	echo '    fullscreen'
 	echo '    audio'
+	echo '    fullscreen'
+	echo '    network {device} {kbps}'
 	echo
 	echo -e '\e[1mexample\e[0m'
 	echo 'idlelock.sh \'
