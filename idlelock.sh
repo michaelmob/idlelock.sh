@@ -30,11 +30,11 @@ is_window_fullscreen() {
 is_network_busy() {
 	#
 	# Test if network is busy.
-	# $1 = ignored
-	# $2 = network card name (ip link)
-	# $3 = kbps to inhibit at
-	local IFS=' '
-	args=($@)
+	# $0 = ignored
+	# $1 = network card name (ip link)
+	# $2 = kbps to inhibit at
+	#
+	local IFS=' '; args=($@)
 	net_stats_path="/sys/class/net/${args[1]}/statistics"
 	tx_file="$net_stats_path/tx_bytes"
 	rx_file="$net_stats_path/rx_bytes"
@@ -42,6 +42,17 @@ is_network_busy() {
 	prev_rx=$(<$rx_file)
 	sleep 1
 	(( ($(<$tx_file) - prev_tx + $(<$rx_file) - prev_rx) / 1000 > ${args[2]} ))
+}
+
+
+is_cpu_busy() {
+	#
+	# Test if network is busy.
+	# $0 = ignored
+	# $1 = cpu load to inhibit at
+	#
+	local IFS=' '; args=($@)
+	return $(echo "$(grep -oP '^.*? ' /proc/loadavg) < ${args[1]}" | bc)
 }
 
 
@@ -72,7 +83,10 @@ is_inhibited() {
 			fullscreen) is_window_fullscreen && return 0 ;;
 
 			# network inhibitor
-			network*) is_network_busy $value && echo network byusy && return 0 ;;
+			network*) is_network_busy $value && return 0 ;;
+			
+			# cpu load inhibitor
+			cpu*) is_cpu_busy $value && return 0 ;;
 
 			# external inhibitor
 			*) [[ $value ]] && sh -c "$value" && return 0 ;;
@@ -239,6 +253,7 @@ usage() {
 	echo '    audio'
 	echo '    fullscreen'
 	echo '    network {device} {kbps}'
+	echo '    cpu {load}'
 	echo
 	echo -e '\e[1mexample\e[0m'
 	echo 'idlelock.sh \'
