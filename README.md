@@ -1,4 +1,4 @@
-# idlelock.sh 0.2
+# idlelock.sh 0.2.1
 
 
 ## Installation
@@ -24,7 +24,7 @@ To compile `xidleseconds`, there are a couple of build dependencies:
 ## Configuration
 **idlelock.sh** requires a slight amount of configuration through the use of arguments.
 
-Run `idlelock.sh -h` for more information about configuring **idlelock.sh**.
+Run `idlelock.sh -h` for more information
 
 ### Example
 ```sh
@@ -53,5 +53,7 @@ idlelock.sh \
 	`# Suspend the system after 5 total minutes of inactivity.` \
 	-300 'sleep' \
 		+command 'systemctl suspend' \
-		+restore 'xset dpms force on' `# Turn screen on after resuming from sleep.`
+		+restore 'xset dpms force on' `# Turn screen on after resuming from sleep.` \
+		+inhibit 'network $DEVICE 2000' `# Inhibit when downloading at 2Mbps.` \
+		+repeat `# Retry command every 300 seconds of inactivity.`
 ```
