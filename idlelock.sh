@@ -84,7 +84,7 @@ is_inhibited() {
 
 			# network inhibitor
 			network*) is_network_busy $value && return 0 ;;
-			
+      
 			# cpu load inhibitor
 			cpu*) is_cpu_busy $value && return 0 ;;
 

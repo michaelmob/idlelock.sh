@@ -1,4 +1,4 @@
-# idlelock.sh
+# idlelock.sh 0.2
 
 
 ## Installation
@@ -12,7 +12,7 @@ sudo apt install libx11 libxss
 sudo pacman -S libx11 libxss
 
 # Clone and install
-git clone https://github.com/thetarkus/idlelock.sh && make && sudo make install
+git clone https://github.com/thetarkus/idlelock.sh && cd idlelock.sh && make && sudo make install
 ```
 After installation, minimal configuration is required.
 
@@ -53,5 +53,5 @@ idlelock.sh \
 	`# Suspend the system after 5 total minutes of inactivity.` \
 	-300 'sleep' \
 		+command 'systemctl suspend' \
-		+restore 'xset dpms force on' `# Turn screen off after resuming from sleep.`
+		+restore 'xset dpms force on' `# Turn screen on after resuming from sleep.`
 ```
