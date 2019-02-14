@@ -56,6 +56,27 @@ is_cpu_busy() {
 }
 
 
+is_paused() {
+	#
+	# Test if pause file exists and if POSIX time is greater than now. 
+	# $0 = ignored
+	# $1 = pause file name
+	# returns 0 when paused
+	#
+	local IFS=' '; args=($@)
+	{ [[ $pause_file ]] && [[ -f $pause_file ]]; } || return 1
+
+	content=($(<$pause_file))
+	[[ $content ]] && return 1
+
+	if (( ${#content[@]} = 1 )); then
+		(( ${content[0]} > $(printf '%(%s)T\n') )) 
+	fi
+}
+
+
+
+
 is_inhibited() {
 	#
 	# Test for successful inhibitors. 
@@ -76,6 +97,9 @@ is_inhibited() {
 	local IFS=';'
 	for value in $temp_inhibitors; do
 		case $value in
+			# pause inhibitor
+			pause*) is_paused $value && return 0 ;;
+
 			# audio inhibitor
 			audio) is_audio_playing && return 0 ;;
 
@@ -132,16 +156,14 @@ idle_monitor() {
 	done
 
 	xidleseconds $args | while read -r line; do
-		[[ $line ]] || continue
-
 		timer=${timers[$line]}
 		[[ $timer ]] || continue
 
-		# on restore, run restore for the last ran timer
+		# when restoring, run restore for the last ran timer
 		if [[ $timer = 'restore' ]]; then
 			run_restore $last_timer
 
-		# do not check inhibition when restoring
+		# when not restoring, check inhibitors
 		else
 			is_inhibited $timer && continue
 		fi
@@ -254,6 +276,9 @@ usage() {
 	echo '    fullscreen'
 	echo '    network {device} {kbps}'
 	echo '    cpu {load}'
+	echo
+	echo -e '\e[1mpausing\e[0m'
+	echo ''
 	echo
 	echo -e '\e[1mexample\e[0m'
 	echo 'idlelock.sh \'
