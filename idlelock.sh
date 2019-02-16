@@ -323,8 +323,6 @@ while :; do
 		# unlock
 		-u | --unlock) unlock_command+="$2;" ;;
 
-		--source) source_only=1 ;;
-
 		# timers
 		-t | --timer)
 			# check for duplicate timers
@@ -356,4 +354,4 @@ while :; do
 done
 
 
-[[ $source_only ]] || main
+[[ -z $IDLELOCK_DO_NOT_RUN ]] && main
