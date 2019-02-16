@@ -1,8 +1,9 @@
 #!/usr/bin/env bash
 args=$@
 IDLELOCK_DO_NOT_RUN=1 source ./idlelock.sh
-test_window_process_name='gears'
+test_window_process_name='glxgears'
 test_window_title='Gears'
+test_audio_url='https://www.youtube.com/watch?v=s-cAcqsFJWY'
 
 
 test_window_is_not_fullscreen() {
@@ -28,12 +29,36 @@ test_window_is_fullscreen() {
 }
 
 
+test_audio_is_playing() {
+	#
+	# Test is_audio_playing passes when audio is playing.
+	#
+	result=1
+	sh -c "exec mpv '$test_audio_url' --no-video" &
+	sleep 5
+	is_audio_playing && result=0
+	kill $(jobs -p)
+	return $result
+}
+
+
+test_audio_is_not_playing() {
+	#
+	# Test is_audio_playing fails when audio is not playing.
+	#
+	is_audio_playing && return 1
+	return 0
+}
+
+
 validate() {
 	#
 	# Validate test environment.
 	#
 	which wmctrl &> /dev/null || { echo 'Missing wmctrl.' && exit 1; }
 	which glxgears &> /dev/null || { echo 'Missing glxgears.' && exit 1; }
+	which mpv &> /dev/null || { echo 'Missing mpv.' && exit 1; }
+	which youtube-dl &> /dev/null || { echo 'Missing youtube-dl.' && exit 1; }
 }
 
 
