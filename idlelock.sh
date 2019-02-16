@@ -58,7 +58,7 @@ is_cpu_busy() {
 
 is_inhibited() {
 	#
-	# Test for successful inhibitors. 
+	# Test for successful inhibitors.
 	# $1 = timer name
 	# returns 0 when inhibited
 	#
@@ -72,7 +72,7 @@ is_inhibited() {
 	[[ $1 ]] && [[ ${inhibitors[$1]} ]] && \
 		temp_inhibitors+=";${inhibitors[$1]}"
 
-	# loop through inhibitors, return 
+	# loop through inhibitors, return
 	local IFS=';'
 	for value in $temp_inhibitors; do
 		case $value in
@@ -84,7 +84,7 @@ is_inhibited() {
 
 			# network inhibitor
 			network*) is_network_busy $value && return 0 ;;
-      
+
 			# cpu load inhibitor
 			cpu*) is_cpu_busy $value && return 0 ;;
 
@@ -262,23 +262,46 @@ usage() {
 	echo "    --inhibit 'fullscreen' \\"
 	echo "    --restore 'xrandr --output \$OUTPUT --brightness 1' \\"
 	echo '    \'
-	echo "    -30 'notify' \\"
+	echo "    -t 30 \\"
 	echo "        +command 'xrandr --output \$OUTPUT --brightness .5' \\"
 	echo '    \'
-	echo "    -60 'lock' \\"
+	echo "    -t 60 \\"
 	echo "        +command 'pgrep -x i3lock || i3lock -n' \\"
 	echo "        +inhibit 'audio' \\"
 	echo '    \'
-	echo "    -65 'screen off' \\"
+	echo "    -t 65 \\"
 	echo "        +command 'xset dpms force off' \\"
 	echo '    \'
-	echo "    -120 'sleep' \\"
+	echo "    -t 120 \\"
 	echo "        +command 'systemctl suspend' \\"
 	echo "        +restore 'xset dpms force on'"
 	echo
 	echo -e '\e[1mexternal commands\e[0m'
 	echo 'loginctl lock-session   : launch the screen locker'
 	echo 'loginctl unlock-session : kill/cancel the screen locker'
+}
+
+
+main() {
+	#
+	# Run idlelock.sh.
+	#
+	echo -e "\e[1midlelock.sh $__version\e[0m"
+
+	# validate
+	[[ ! " ${timers[@]} " =~ ' lock ' ]] && {
+		echo -e "Missing the required 'lock' timer.\nRun $0 -h for help."
+		exit 1; }
+
+	# setup
+	timers[0]='restore'
+
+	# trap
+	trap 'kill $(jobs -p)' EXIT
+
+	# run monitors
+	dbus_monitor
+	idle_monitor
 }
 
 
@@ -305,29 +328,26 @@ while :; do
 		# unlock
 		-u | --unlock) unlock_command+="$2;" ;;
 
-		# timers
-		-[0-9]*)
-			name=$2; seconds=${1/-}
-			
-			# check for duplicate names
-			[[ " ${timers[@]} " =~ " $name " ]] && {
-				echo -e "Duplicate timer names: $name\nRun $0 -h for help."
-				exit 1; }
+		--source) source_only=1 ;;
 
-			# check for duplicate seconds
+		# timers
+		-t | --timer)
+			seconds=$2
+
+			# check for duplicate timers
 			[[ " ${!timers[@]} " =~ " $seconds " ]] && {
 				echo -e "Duplicate seconds: $seconds\nRun $0 -h for help."
 				exit 1; }
 
-			timers[$seconds]=$name
+			timers[$seconds]=$seconds
 
 			# parse timer arguments
 			while :; do
 				case "$1" in
-					+c | +command) commands[$name]+="$2;" ;;
-					+r | +restore) restores[$name]+="$2;" ;;
-					+i | +inhibit) inhibitors[$name]+="$2;" ;;
-					+repeat) repeating_timers+=($name) && shift 1 ;;
+					+c | +command) commands[$seconds]+="$2;" ;;
+					+r | +restore) restores[$seconds]+="$2;" ;;
+					+i | +inhibit) inhibitors[$seconds]+="$2;" ;;
+					+repeat) repeating_timers+=($seconds) && shift 1 ;;
 				esac
 
 				shift 1
@@ -342,20 +362,5 @@ while :; do
 done
 
 
-echo -e "\e[1midlelock.sh $__version\e[0m"
-
-# validate
-[[ ! " ${timers[@]} " =~ ' lock ' ]] && {
-	echo -e "Missing the required 'lock' timer.\nRun $0 -h for help."
-	exit 1; }
-
-# setup
-timers[0]='restore'
-
-# trap
-trap 'kill $(jobs -p)' EXIT
-
-# run monitors
-echo $$
-dbus_monitor
-idle_monitor
+echo ${commands[@]}
+#[[ $source_only ]] || main
