@@ -61,5 +61,6 @@ main() {
 	echo 'Failed:' $tests_failed
 }
 
+
 validate
 main
