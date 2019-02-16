@@ -20,7 +20,7 @@ test_window_is_fullscreen() {
 	#
 	result=1
 	sh -c "exec $test_window_process_name" &
-	read_sleep 0.5
+	sleep 0.5
 	wmctrl -r $test_window_title -b add,fullscreen
 	is_window_fullscreen && result=0
 	kill $(jobs -p)
@@ -28,8 +28,19 @@ test_window_is_fullscreen() {
 }
 
 
-read_sleep() { read -rst "${1:-1}" -N 999; }
+validate() {
+	#
+	# Validate test environment.
+	#
+	which wmctrl &> /dev/null || { echo 'Missing wmctrl.' && exit 1; }
+	which glxgears &> /dev/null || { echo 'Missing glxgears.' && exit 1; }
+}
+
+
 main() {
+	#
+	# Run test functions.
+	#
 	test_functions=${args:-$(declare -F | grep -oP ' test_.*')}
 	tests_total=$(echo $test_functions | wc -w)
 	tests_completed=0; tests_passed=0; tests_failed=0
@@ -48,4 +59,7 @@ main() {
 	echo 'Tests: ' $tests_completed
 	echo 'Passed:' $tests_passed
 	echo 'Failed:' $tests_failed
-}; main
+}
+
+validate
+main
