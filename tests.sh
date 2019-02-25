@@ -27,16 +27,14 @@ test_is_window_not_fullscreen() {
 }
 
 
-test_audio_is_playing() {
+test_is_audio_playing() {
 	#
 	# Test is_audio_playing passes when audio is playing.
 	#
-	result=1
+	trap 'kill $(jobs -p)' RETURN
 	sh -c "exec mpv '$test_audio_url' --no-video" &
 	sleep 5
-	is_audio_playing && result=0
-	kill $(jobs -p)
-	return $result
+	is_audio_playing
 }
 
 
