@@ -4,6 +4,7 @@ IDLELOCK_DO_NOT_RUN=1 source ./idlelock.sh
 test_window_process_name='glxgears'
 test_window_title='Gears'
 test_audio_url='https://www.youtube.com/watch?v=s-cAcqsFJWY'
+test_download_url='http://ipv4.download.thinkbroadband.com/1GB.zip'
 
 
 test_window_is_not_fullscreen() {
