@@ -38,12 +38,12 @@ test_is_audio_playing() {
 }
 
 
-test_audio_is_not_playing() {
+test_is_audio_not_playing() {
 	#
 	# Test is_audio_playing fails when audio is not playing.
 	#
-	is_audio_playing && return 1
-	return 0
+	! is_audio_playing
+}
 
 
 test_is_network_busy() {
