@@ -312,10 +312,10 @@ while :; do
 		-i | --inhibit) global_inhibitors+="$2;" ;;
 
 		# unlock command
-		-u | --unlock-cmd | --unlock-command) unlock_command+="$2;" ;;
+		-u | --unlock-cmd) unlock_command+="$2;" ;;
 
 		# restore command
-		-r | --restore-cmd | --restore-command) global_restore+="$2;" ;;
+		-r | --restore-cmd) global_restore+="$2;" ;;
 
 		# lock on sleep
 		--lock-on-sleep) lock_on_sleep=1 ;;
