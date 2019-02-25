@@ -19,17 +19,11 @@ test_is_window_fullscreen() {
 }
 
 
-test_window_is_fullscreen() {
+test_is_window_not_fullscreen() {
 	#
 	# Test is_window_fullscreen does not pass when no window is fullscreen.
 	#
-	result=1
-	sh -c "exec $test_window_process_name" &
-	sleep 0.5
-	wmctrl -r $test_window_title -b add,fullscreen
-	is_window_fullscreen && result=0
-	kill $(jobs -p)
-	return $result
+	! is_window_fullscreen
 }
 
 
