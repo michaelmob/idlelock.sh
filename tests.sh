@@ -84,6 +84,35 @@ test_is_cpu_not_busy() {
 }
 
 
+test_is_paused() {
+	#
+	# Test is_paused passes when file with unix time is greater than now.
+	#
+	echo "$(( $(printf '%(%s)T\n') + 60 ))" > /tmp/test_pause_file
+	trap 'rm -f /tmp/test_pause_file' RETURN
+	is_paused /tmp/test_pause_file
+}
+
+
+test_is_paused_with_unix_time_less_than_now() {
+	#
+	# Test is_paused fails when file with unix time is less than now.
+	#
+	echo "$(( $(printf '%(%s)T\n') - 60 ))" > /tmp/test_pause_file
+	trap 'rm -f /tmp/test_pause_file' RETURN
+	! is_paused /tmp/test_pause_file
+}
+
+
+test_is_paused_without_file() {
+	#
+	# Test is_paused fails without pause file.
+	#
+	rm -f /tmp/test_pause_file
+	! is_paused /tmp/test_pause_file
+}
+
+
 test_run_command() {
 	#
 	# Test run_command runs a temporary timer command.
