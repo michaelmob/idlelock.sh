@@ -107,6 +107,22 @@ test_run_command_with_invalid_timer() {
 }
 
 
+test_run_restore() {
+	#
+	# Test run_restore runs a restore command.
+	#
+	restores=( [temp]='touch /tmp/test_file' )
+	run_restore temp
+	sleep 0.2
+	rm /tmp/test_file
+}
+
+
+test_run_restore_with_invalid_timer() {
+	#
+	# Test run_restore fails when no restores are specified.
+	#
+	! run_restore invalid
 }
 
 
