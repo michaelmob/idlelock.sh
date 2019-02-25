@@ -215,22 +215,22 @@ usage() {
 	echo -e "\e[1midlelock.sh $__version\e[0m"
 	echo "usage: idlelock.sh [option] ... [-{seconds} +command {command}] ..."
 	echo
-	echo '-v, --version       : display version'
-	echo '-h, --help          : display help'
-	echo '-i, --inhibit {cmd} : inhibitors to check against for every timer'
-	echo '-r, --restore {cmd} : command to run on restore from every timer'
-	echo '-u, --unlock {cmd}  : command to kill or cancel the screen lock'
-	echo '-l, --lock-on-sleep : launch lock timer before system sleep'
+	echo '-v, --version           : display version'
+	echo '-h, --help              : display help'
+	echo '-i, --inhibit {items}   : inhibitors to check against for every timer'
+	echo '-u, --unlock-cmd {cmd}  : command to kill or cancel the screen lock'
+	echo '-r, --restore-cmd {cmd} : command to run on restore from every timer'
+	echo '    --lock-on-sleep     : launch lock timer before system sleep'
 	echo
 	echo -e '\e[1mtimers\e[0m'
-	echo "-t {seconds}        : timer to be used with timer options"
-	echo '    +command {cmd}  : command to run after {seconds} of inactivity'
-	echo '    +restore {cmd}  : command to run on activity after timer is activated'
-	echo '    +inhibit {val}  : inhibitors to check against before running command'
-	echo '    +primary        : mark timer as primary '
-	echo '    +repeat         : run every {seconds} after inactivity'
+	echo "-t {seconds}            : timer to be used with timer options"
+	echo '    +command {cmd}      : command to run after {seconds} of inactivity'
+	echo '    +restore {cmd}      : command to run on activity after timer is activated'
+	echo '    +inhibit {val}      : inhibitors to check against before running command'
+	echo '    +primary            : set timer as primary'
+	echo '    +repeat             : run every {seconds} after inactivity'
 	echo
-	echo 'each timer may different options. options are prefixed with a plus and'
+	echo 'each timer may have different options. options are prefixed with a plus and'
 	echo 'only apply to the current timer. multiple options can be combined in'
 	echo 'a single timer, either by a semi-colon delimeter or by adding the same'
 	echo 'option but with a different value (example in inhibitors section)'
@@ -255,9 +255,9 @@ usage() {
 	echo -e '\e[1mexample\e[0m'
 	echo 'idlelock.sh \'
 	echo "    --lock-on-sleep \\"
-	echo "    --unlock 'pkill i3lock' \\"
 	echo "    --inhibit 'fullscreen' \\"
-	echo "    --restore 'xrandr --output \$OUTPUT --brightness 1' \\"
+	echo "    --unlock-cmd 'pkill i3lock' \\"
+	echo "    --restore-cmd 'xrandr --output \$OUTPUT --brightness 1' \\"
 	echo '    \'
 	echo "    -t 30 \\"
 	echo "        +command 'xrandr --output \$OUTPUT --brightness .5' \\"
@@ -311,14 +311,14 @@ while :; do
 		# inhibitors
 		-i | --inhibit) global_inhibitors+="$2;" ;;
 
-		# restore
-		-r | --restore) global_restore+="$2;" ;;
+		# unlock command
+		-u | --unlock-cmd | --unlock-command) unlock_command+="$2;" ;;
+
+		# restore command
+		-r | --restore-cmd | --restore-command) global_restore+="$2;" ;;
 
 		# lock on sleep
-		-l | --lock-on-sleep) lock_on_sleep=1 ;;
-
-		# unlock
-		-u | --unlock) unlock_command+="$2;" ;;
+		--lock-on-sleep) lock_on_sleep=1 ;;
 
 		# timers
 		-t | --timer)
@@ -333,7 +333,7 @@ while :; do
 			# parse timer arguments
 			while :; do
 				case "$1" in
-					+c | +command) commands[$seconds]+="$2;" ;;
+					+c | +cmd | +command) commands[$seconds]+="$2;" ;;
 					+r | +restore) restores[$seconds]+="$2;" ;;
 					+i | +inhibit) inhibitors[$seconds]+="$2;" ;;
 					+repeat) repeating_timers+=($seconds) ;;
