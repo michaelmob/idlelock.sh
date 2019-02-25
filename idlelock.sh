@@ -40,7 +40,7 @@ is_network_busy() {
 	rx_file="$net_stats_path/rx_bytes"
 	prev_tx=$(<$tx_file)
 	prev_rx=$(<$rx_file)
-	sleep 1
+	read -rst 1 -N 999
 	(( ($(<$tx_file) - prev_tx + $(<$rx_file) - prev_rx) / 1000 > ${args[2]} ))
 }
 
