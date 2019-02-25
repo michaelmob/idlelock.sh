@@ -6,7 +6,7 @@
 #
 
 
-__version=0.2.1
+__version=0.2.2
 declare -A timers commands inhibitors restores
 
 
