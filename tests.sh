@@ -7,12 +7,15 @@ test_audio_url='https://www.youtube.com/watch?v=s-cAcqsFJWY'
 test_download_url='http://ipv4.download.thinkbroadband.com/1GB.zip'
 
 
-test_window_is_not_fullscreen() {
+test_is_window_fullscreen() {
 	#
 	# Test is_window_fullscreen does not pass when no window is fullscreen.
 	#
-	is_window_fullscreen && return 1
-	return 0
+	trap 'kill $(jobs -p)' RETURN
+	sh -c "exec $test_window_process_name" &
+	sleep 0.5
+	wmctrl -r $test_window_title -b add,fullscreen
+	is_window_fullscreen
 }
 
 
