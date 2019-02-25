@@ -134,6 +134,7 @@ validate() {
 	which glxgears &> /dev/null || { echo 'Missing glxgears.' && exit 1; }
 	which mpv &> /dev/null || { echo 'Missing mpv.' && exit 1; }
 	which youtube-dl &> /dev/null || { echo 'Missing youtube-dl.' && exit 1; }
+	which stress &> /dev/null || { echo 'Missing stress.' && exit 1; }
 }
 
 
