@@ -30,29 +30,25 @@ is_window_fullscreen() {
 is_network_busy() {
 	#
 	# Test if network is busy.
-	# $0 = ignored
 	# $1 = network card name (ip link)
 	# $2 = kbps to inhibit at
 	#
-	local IFS=' '; args=($@)
-	net_stats_path="/sys/class/net/${args[1]}/statistics"
+	net_stats_path="/sys/class/net/$1/statistics"
 	tx_file="$net_stats_path/tx_bytes"
 	rx_file="$net_stats_path/rx_bytes"
 	prev_tx=$(<$tx_file)
 	prev_rx=$(<$rx_file)
 	read -rst 1 -N 999
-	(( ($(<$tx_file) - prev_tx + $(<$rx_file) - prev_rx) / 1000 > ${args[2]} ))
+	(( ($(<$tx_file) - prev_tx + $(<$rx_file) - prev_rx) / 1000 > $2 ))
 }
 
 
 is_cpu_busy() {
 	#
 	# Test if network is busy.
-	# $0 = ignored
 	# $1 = cpu load to inhibit at
 	#
-	local IFS=' '; args=($@)
-	return $(echo "$(grep -oP '^.*? ' /proc/loadavg) < ${args[1]}" | bc)
+	return $(echo "$(grep -oP '^.*? ' /proc/loadavg) < $1" | bc)
 }
 
 
@@ -75,7 +71,8 @@ is_inhibited() {
 	# loop through inhibitors, return
 	local IFS=';'
 	for value in $temp_inhibitors; do
-		case $value in
+		IFS=' ' value=( $value )
+		case ${value[0]} in
 			# audio inhibitor
 			audio) is_audio_playing && return 0 ;;
 
@@ -83,10 +80,10 @@ is_inhibited() {
 			fullscreen) is_window_fullscreen && return 0 ;;
 
 			# network inhibitor
-			network*) is_network_busy $value && return 0 ;;
+			network) is_network_busy ${value[@]:1} && return 0 ;;
 
 			# cpu load inhibitor
-			cpu*) is_cpu_busy $value && return 0 ;;
+			cpu) is_cpu_busy ${value[@]:1} && return 0 ;;
 
 			# external inhibitor
 			*) [[ $value ]] && sh -c "$value" && return 0 ;;
