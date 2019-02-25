@@ -72,7 +72,7 @@ test_is_cpu_busy() {
 	trap 'pkill stress' RETURN
 	sh -c "stress -c 16" &
 	sleep 10
-	is_cpu_busy x 3
+	is_cpu_busy 3
 }
 
 
@@ -80,7 +80,7 @@ test_is_cpu_not_busy() {
 	#
 	# Test is_cpu_busy fails when there is no cpu load.
 	#
-	! is_cpu_busy x 5
+	! is_cpu_busy 5
 }
 
 
