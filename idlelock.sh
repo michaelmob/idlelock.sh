@@ -263,9 +263,7 @@ usage() {
 	echo '    fullscreen'
 	echo '    network {device} {kbps}'
 	echo '    cpu {load}'
-	echo
-	echo -e '\e[1mpausing\e[0m'
-	echo ''
+	echo '    pause {file}'
 	echo
 	echo -e '\e[1mexample\e[0m'
 	echo 'idlelock.sh \'
