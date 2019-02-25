@@ -67,6 +67,46 @@ test_is_network_not_busy() {
 	#
 	! is_network_busy x enp5s0 500
 }
+
+
+test_is_cpu_busy() {
+	#
+	# Test is_cpu_busy passes when there is cpu load.
+	#
+	trap 'pkill stress' RETURN
+	sh -c "stress -c 16" &
+	sleep 10
+	is_cpu_busy x 3
+}
+
+
+test_is_cpu_not_busy() {
+	#
+	# Test is_cpu_busy fails when there is no cpu load.
+	#
+	! is_cpu_busy x 5
+}
+
+
+test_run_command() {
+	#
+	# Test run_command runs a temporary timer command.
+	#
+	commands=( [temp]='touch /tmp/test_file' )
+	run_command temp
+	sleep 0.5
+	rm /tmp/test_file
+}
+
+
+test_run_command_with_invalid_timer() {
+	#
+	# Test run_command fails on invalid timer key.
+	#
+	! run_command invalid
+}
+
+
 }
 
 
