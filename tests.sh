@@ -48,6 +48,25 @@ test_audio_is_not_playing() {
 	#
 	is_audio_playing && return 1
 	return 0
+
+
+test_is_network_busy() {
+	#
+	# Test is_network_busy passes when downloading a file.
+	#
+	trap 'kill $(jobs -p); rm -f /tmp/test_file' RETURN
+	sh -c "wget --limit-rate=501k '$test_download_url' -O /tmp/test_file" &
+	sleep 2
+	is_network_busy x enp5s0 500
+}
+
+
+test_is_network_not_busy() {
+	#
+	# Test is_network_busy fails when not downloading.
+	#
+	! is_network_busy x enp5s0 500
+}
 }
 
 
