@@ -6,7 +6,7 @@
 #
 
 
-__version=0.2.1
+__version=0.2.2
 declare -A timers commands inhibitors restores
 
 
@@ -30,36 +30,43 @@ is_window_fullscreen() {
 is_network_busy() {
 	#
 	# Test if network is busy.
-	# $0 = ignored
 	# $1 = network card name (ip link)
 	# $2 = kbps to inhibit at
 	#
-	local IFS=' '; args=($@)
-	net_stats_path="/sys/class/net/${args[1]}/statistics"
+	net_stats_path="/sys/class/net/$1/statistics"
 	tx_file="$net_stats_path/tx_bytes"
 	rx_file="$net_stats_path/rx_bytes"
 	prev_tx=$(<$tx_file)
 	prev_rx=$(<$rx_file)
-	sleep 1
-	(( ($(<$tx_file) - prev_tx + $(<$rx_file) - prev_rx) / 1000 > ${args[2]} ))
+	read -rst 1 -N 999
+	(( ($(<$tx_file) - prev_tx + $(<$rx_file) - prev_rx) / 1000 > $2 ))
 }
 
 
 is_cpu_busy() {
 	#
 	# Test if network is busy.
-	# $0 = ignored
 	# $1 = cpu load to inhibit at
 	#
-	local IFS=' '; args=($@)
-	return $(echo "$(grep -oP '^.*? ' /proc/loadavg) < ${args[1]}" | bc)
+	return $(echo "$(grep -oP '^.*? ' /proc/loadavg) < $1" | bc)
+}
+
+
+is_paused() {
+	#
+	# Test if pause file exists and if POSIX time is greater than now.
+	# $1 = pause file name
+	# returns 0 when paused
+	#
+	[[ $1 ]] && [[ -f $1 ]] && data=$(<$1) && [[ $data ]] && \
+		(( ${data[0]} > $(printf '%(%s)T\n') ))
 }
 
 
 is_inhibited() {
 	#
-	# Test for successful inhibitors. 
-	# $1 = timer name
+	# Test for successful inhibitors.
+	# $1 = timer seconds
 	# returns 0 when inhibited
 	#
 	local temp_inhibitors=
@@ -72,21 +79,25 @@ is_inhibited() {
 	[[ $1 ]] && [[ ${inhibitors[$1]} ]] && \
 		temp_inhibitors+=";${inhibitors[$1]}"
 
-	# loop through inhibitors, return 
+	# loop through inhibitors, return
 	local IFS=';'
 	for value in $temp_inhibitors; do
-		case $value in
+		IFS=' ' value=( $value )
+		case ${value[0]} in
 			# audio inhibitor
 			audio) is_audio_playing && return 0 ;;
 
 			# fullscreen inhibitor
 			fullscreen) is_window_fullscreen && return 0 ;;
 
+			# pause inhibitor
+			pause) is_paused ${value[@]:1} && return 0 ;;
+
 			# network inhibitor
-			network*) is_network_busy $value && return 0 ;;
-      
+			network) is_network_busy ${value[@]:1} && return 0 ;;
+
 			# cpu load inhibitor
-			cpu*) is_cpu_busy $value && return 0 ;;
+			cpu) is_cpu_busy ${value[@]:1} && return 0 ;;
 
 			# external inhibitor
 			*) [[ $value ]] && sh -c "$value" && return 0 ;;
@@ -100,7 +111,7 @@ is_inhibited() {
 run_command() {
 	#
 	# Run timers command.
-	# $1 = timer name
+	# $1 = timer seconds
 	#
 	[[ $1 ]] || return
 	[[ ${commands[$1]} ]] || return
@@ -111,7 +122,7 @@ run_command() {
 run_restore() {
 	#
 	# Run global and timers restore commands.
-	# $1 = timer name
+	# $1 = timer seconds
 	#
 	[[ $global_restore ]] && sh -c "$global_restore" &
 	[[ $1 ]] || return
@@ -132,16 +143,14 @@ idle_monitor() {
 	done
 
 	xidleseconds $args | while read -r line; do
-		[[ $line ]] || continue
-
 		timer=${timers[$line]}
 		[[ $timer ]] || continue
 
-		# on restore, run restore for the last ran timer
+		# when restoring, run restore for the last ran timer
 		if [[ $timer = 'restore' ]]; then
 			run_restore $last_timer
 
-		# do not check inhibition when restoring
+		# when not restoring, check inhibitors
 		else
 			is_inhibited $timer && continue
 		fi
@@ -194,7 +203,7 @@ dbus_receive() {
 	case "$1" in
 		# run lock
 		Lock)
-			run_command lock
+			[[ $primary_timer ]] && run_command $primary_timer
 			;;
 
 		# run unlock
@@ -205,7 +214,7 @@ dbus_receive() {
 		# run lock before sleeping
 		PrepareForSleep)
 			[[ $lock_on_sleep ]] || return
-			run_command lock
+			[[ $primary_timer ]] && run_command $primary_timer
 			;;
 	esac
 }
@@ -218,26 +227,26 @@ usage() {
 	echo -e "\e[1midlelock.sh $__version\e[0m"
 	echo "usage: idlelock.sh [option] ... [-{seconds} +command {command}] ..."
 	echo
-	echo '-v, --version       : display version'
-	echo '-h, --help          : display help'
-	echo '-i, --inhibit {cmd} : inhibitors to check against for every timer'
-	echo '-r, --restore {cmd} : command to run on restore from every timer'
-	echo '-u, --unlock {cmd}  : command to kill or cancel the screen lock'
-	echo '-l, --lock-on-sleep : launch lock timer before system sleep'
+	echo '-v, --version           : display version'
+	echo '-h, --help              : display help'
+	echo '-i, --inhibit {items}   : inhibitors to check against for every timer'
+	echo '-u, --unlock-cmd {cmd}  : command to kill or cancel the screen lock'
+	echo '-r, --restore-cmd {cmd} : command to run on restore from every timer'
+	echo '    --lock-on-sleep     : launch lock timer before system sleep'
 	echo
 	echo -e '\e[1mtimers\e[0m'
-	echo "-{seconds} {name}   : timer to be used with timer options"
-	echo '    +command {cmd}  : command to run after {seconds} of inactivity'
-	echo '    +restore {cmd}  : command to run on activity after timer is activated'
-	echo '    +inhibit {val}  : inhibitors to check against before running command'
-	echo '    +repeat         : run every {seconds} after inactivity'
+	echo "-t {seconds}            : timer to be used with timer options"
+	echo '    +command {cmd}      : command to run after {seconds} of inactivity'
+	echo '    +restore {cmd}      : command to run on activity after timer is activated'
+	echo '    +inhibit {val}      : inhibitors to check against before running command'
+	echo '    +primary            : set timer as primary'
+	echo '    +repeat             : run every {seconds} after inactivity'
 	echo
-	echo 'each timer may different options. options are prefixed with a plus and'
+	echo 'each timer may have different options. options are prefixed with a plus and'
 	echo 'only apply to the current timer. multiple options can be combined in'
 	echo 'a single timer, either by a semi-colon delimeter or by adding the same'
 	echo 'option but with a different value (example in inhibitors section)'
 	echo
-	echo "a timer with the name 'lock' is always required"
 	echo 'timers must all have different {seconds} values'
 	echo
 	echo -e '\e[1minhibitors\e[0m'
@@ -254,31 +263,50 @@ usage() {
 	echo '    fullscreen'
 	echo '    network {device} {kbps}'
 	echo '    cpu {load}'
+	echo '    pause {file}'
 	echo
 	echo -e '\e[1mexample\e[0m'
 	echo 'idlelock.sh \'
 	echo "    --lock-on-sleep \\"
-	echo "    --unlock 'pkill i3lock' \\"
 	echo "    --inhibit 'fullscreen' \\"
-	echo "    --restore 'xrandr --output \$OUTPUT --brightness 1' \\"
+	echo "    --unlock-cmd 'pkill i3lock' \\"
+	echo "    --restore-cmd 'xrandr --output \$OUTPUT --brightness 1' \\"
 	echo '    \'
-	echo "    -30 'notify' \\"
+	echo "    -t 30 \\"
 	echo "        +command 'xrandr --output \$OUTPUT --brightness .5' \\"
 	echo '    \'
-	echo "    -60 'lock' \\"
+	echo "    -t 60 \\"
 	echo "        +command 'pgrep -x i3lock || i3lock -n' \\"
 	echo "        +inhibit 'audio' \\"
 	echo '    \'
-	echo "    -65 'screen off' \\"
+	echo "    -t 65 \\"
 	echo "        +command 'xset dpms force off' \\"
 	echo '    \'
-	echo "    -120 'sleep' \\"
+	echo "    -t 120 \\"
 	echo "        +command 'systemctl suspend' \\"
 	echo "        +restore 'xset dpms force on'"
 	echo
 	echo -e '\e[1mexternal commands\e[0m'
 	echo 'loginctl lock-session   : launch the screen locker'
 	echo 'loginctl unlock-session : kill/cancel the screen locker'
+}
+
+
+main() {
+	#
+	# Run idlelock.sh.
+	#
+	echo -e "\e[1midlelock.sh $__version\e[0m"
+
+	# setup
+	timers[0]='restore'
+
+	# trap
+	trap 'kill $(jobs -p)' EXIT
+
+	# run monitors
+	dbus_monitor
+	idle_monitor
 }
 
 
@@ -296,41 +324,35 @@ while :; do
 		# inhibitors
 		-i | --inhibit) global_inhibitors+="$2;" ;;
 
-		# restore
-		-r | --restore) global_restore+="$2;" ;;
+		# unlock command
+		-u | --unlock-cmd) unlock_command+="$2;" ;;
+
+		# restore command
+		-r | --restore-cmd) global_restore+="$2;" ;;
 
 		# lock on sleep
-		-l | --lock-on-sleep) lock_on_sleep=1 ;;
-
-		# unlock
-		-u | --unlock) unlock_command+="$2;" ;;
+		--lock-on-sleep) lock_on_sleep=1 ;;
 
 		# timers
-		-[0-9]*)
-			name=$2; seconds=${1/-}
-			
-			# check for duplicate names
-			[[ " ${timers[@]} " =~ " $name " ]] && {
-				echo -e "Duplicate timer names: $name\nRun $0 -h for help."
+		-t | --timer)
+			# check for duplicate timers
+			[[ " ${!timers[@]} " =~ " $2 " ]] && {
+				echo -e "Duplicate timers: $2\nRun $0 -h for help."
 				exit 1; }
 
-			# check for duplicate seconds
-			[[ " ${!timers[@]} " =~ " $seconds " ]] && {
-				echo -e "Duplicate seconds: $seconds\nRun $0 -h for help."
-				exit 1; }
-
-			timers[$seconds]=$name
+			seconds=$2
+			timers[$2]=$2
 
 			# parse timer arguments
 			while :; do
 				case "$1" in
-					+c | +command) commands[$name]+="$2;" ;;
-					+r | +restore) restores[$name]+="$2;" ;;
-					+i | +inhibit) inhibitors[$name]+="$2;" ;;
-					+repeat) repeating_timers+=($name) && shift 1 ;;
+					+c | +cmd | +command) commands[$seconds]+="$2;" ;;
+					+r | +restore) restores[$seconds]+="$2;" ;;
+					+i | +inhibit) inhibitors[$seconds]+="$2;" ;;
+					+repeat) repeating_timers+=($seconds) ;;
+					+primary) primary_timer=$seconds ;;
 				esac
 
-				shift 1
 				if [[ -z $2 ]] || [[ ${2:0:1} = '-' ]]; then
 					break
 				fi
@@ -342,20 +364,4 @@ while :; do
 done
 
 
-echo -e "\e[1midlelock.sh $__version\e[0m"
-
-# validate
-[[ ! " ${timers[@]} " =~ ' lock ' ]] && {
-	echo -e "Missing the required 'lock' timer.\nRun $0 -h for help."
-	exit 1; }
-
-# setup
-timers[0]='restore'
-
-# trap
-trap 'kill $(jobs -p)' EXIT
-
-# run monitors
-echo $$
-dbus_monitor
-idle_monitor
+[[ -z $IDLELOCK_DO_NOT_RUN ]] && main
